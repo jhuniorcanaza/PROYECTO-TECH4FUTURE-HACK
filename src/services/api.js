@@ -25,7 +25,7 @@ const MODE = import.meta.env.VITE_MODE || 'directo'
 const PLANT_ID_KEY = import.meta.env.VITE_PLANT_ID_KEY || ''
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY || ''
 
-// Modelo Gemini a usar (gemini-2.0-flash es gratuito y muy rápido)
+// Modelo Gemini — gemini-2.0-flash (gratis, disponible en la cuenta)
 const GEMINI_MODEL = 'gemini-2.0-flash'
 
 // ===================================================================
@@ -192,11 +192,21 @@ Reglas de respuesta:
 
     const data = await response.json()
 
+    // Error 429: límite de requests por minuto alcanzado
+    if (response.status === 429) {
+      return '⏳ BioBot está ocupado ahora mismo. Esperá 1 minuto e intentá de nuevo.'
+    }
+
+    // Otro error de la API
+    if (!response.ok) {
+      console.error('Error Gemini:', response.status, data)
+      return `⚠️ Error al conectar con BioBot (${response.status}). Intentá más tarde.`
+    }
+
     if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
       return data.candidates[0].content.parts[0].text
     }
 
-    // Mostrar error real en consola para debug
     console.error('Respuesta Gemini inesperada:', JSON.stringify(data))
     return '🌿 No pude responder esa consulta. ¿Podés reformularla?'
   } catch (error) {
