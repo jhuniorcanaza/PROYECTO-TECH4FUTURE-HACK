@@ -192,23 +192,17 @@ Reglas de respuesta:
 
     const data = await response.json()
 
-    // Error 429: límite de requests por minuto alcanzado
-    if (response.status === 429) {
-      return '⏳ BioBot está ocupado ahora mismo. Esperá 1 minuto e intentá de nuevo.'
-    }
-
-    // Otro error de la API
+    // Si hay cualquier error de API (429, 503, etc.) → caer silenciosamente al demo
     if (!response.ok) {
-      console.error('Error Gemini:', response.status, data)
-      return `⚠️ Error al conectar con BioBot (${response.status}). Intentá más tarde.`
+      console.warn('Gemini no disponible, usando respuesta demo:', response.status)
+      return getRespuestaDemo(pregunta)
     }
 
     if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
       return data.candidates[0].content.parts[0].text
     }
 
-    console.error('Respuesta Gemini inesperada:', JSON.stringify(data))
-    return '🌿 No pude responder esa consulta. ¿Podés reformularla?'
+    return getRespuestaDemo(pregunta)
   } catch (error) {
     console.error('Error en chatbot Gemini:', error)
     return 'Disculpa, no pude conectarme con BioBot. 🌿 Intentá de nuevo en unos segundos.'
@@ -317,13 +311,88 @@ function getDatoDemo() {
 
 function getRespuestaDemo(pregunta) {
   const p = pregunta.toLowerCase()
-  if (p.includes('monterita'))
-    return '🐦 La Monterita de Cochabamba (Poospiza garleppi) es un ave endémica EN PELIGRO de extinción. Vive solo en los bosques de Polylepis del Cerro San Pedro, entre 2800-3500m de altitud.'
-  if (p.includes('tunnel') || p.includes('túnel'))
-    return '🚧 El proyecto del túnel en el Cerro San Pedro amenaza directamente los corredores biológicos. Más de 700 especies dependen de este ecosistema. El Proyecto ATUQ de WWF trabaja para protegerlo.'
-  if (p.includes('polylepis') || p.includes('quewiña'))
-    return '🌿 Los bosques de Polylepis (quewiña) son ecosistemas únicos que crecen a mayor altitud que cualquier otro árbol. Son el hogar de la Monterita y muchas aves endémicas.'
-  if (p.includes('voluntario'))
-    return '🙌 Los voluntarios son clave para BioScan. Toman fotos de especies en el cerro, y nuestra IA las identifica automáticamente. ¡Anímate a participar!'
-  return '🌿 El Cerro San Pedro alberga más de 700 especies. Tiene 104 aves, 527 plantas, 41 mariposas y 10 murciélagos. Es un corredor biológico vital para Cochabamba. ¿Qué te gustaría saber?'
+
+  // --- SALUDOS ---
+  if (p.match(/^(hola|buenos|buenas|hey|hi|saludos|ola)/))
+    return '¡Hola! 🌿 Soy BioBot, el eco-asistente de BioScan Cochabamba. Estoy aquí para ayudarte a conocer la biodiversidad del Cerro San Pedro. ¿Qué especie o tema te gustaría explorar?'
+
+  // --- MONTERITA ---
+  if (p.includes('monterita') || p.includes('garleppi') || p.includes('poospiza'))
+    return '🐦 La Monterita de Cochabamba (Poospiza garleppi) es un ave ENDÉMICA en PELIGRO CRÍTICO de extinción. Solo vive en los bosques de Polylepis del Cerro San Pedro, entre 2800-3500m. Es el símbolo de la conservación del cerro.'
+
+  // --- TÚNEL ---
+  if (p.includes('túnel') || p.includes('tunel') || p.includes('tunnel'))
+    return '🚧 El proyecto del túnel en el Cerro San Pedro fragmentaría directamente los corredores biológicos. Más de 700 especies dependen de este ecosistema interconectado. El Proyecto ATUQ de WWF trabaja para detenerlo.'
+
+  // --- POLYLEPIS / QUEWIÑA ---
+  if (p.includes('polylepis') || p.includes('quewiña') || p.includes('queñua') || p.includes('quewi'))
+    return '🌳 Los bosques de Polylepis (quewiña) son los ecosistemas más amenazados del Cerro San Pedro. Crecen a mayor altitud que cualquier otro árbol del mundo y son el único hábitat de la Monterita de Cochabamba.'
+
+  // --- ESPECIES / BIODIVERSIDAD ---
+  if (p.includes('cuántas') || p.includes('cuantas') || p.includes('cuántos') || p.includes('cuantos') || p.includes('número') || p.includes('total'))
+    return '📊 El Cerro San Pedro registra 700+ especies: 104 aves, 527 plantas vasculares, 41 mariposas, 10 murciélagos y decenas de insectos. Es uno de los corredores biológicos urbanos más importantes de Bolivia.'
+
+  // --- AVES ---
+  if (p.includes('ave') || p.includes('pájaro') || p.includes('pajaro') || p.includes('bird') || p.includes('pato') || p.includes('loro') || p.includes('colibr'))
+    return '🐦 El cerro alberga 104 especies de aves. Entre las más representativas: la Monterita de Cochabamba (endémica en peligro), el Colibrí Andino, el Zorzal boliviano y el Cernícalo Americano. ¡Son excelentes bioindicadores del ecosistema!'
+
+  // --- PLANTAS ---
+  if (p.includes('planta') || p.includes('flora') || p.includes('árbol') || p.includes('arbol') || p.includes('vegeta'))
+    return '🌿 Con 527 plantas vasculares registradas, la flora del Cerro San Pedro es extraordinaria. Destacan el Molle (Schinus molle), la Quewiña (Polylepis), el Cactus San Pedro y diversas especies de bromeliáceas nativas.'
+
+  // --- MARIPOSAS / INSECTOS ---
+  if (p.includes('mariposa') || p.includes('insecto') || p.includes('butterfly') || p.includes('morpho'))
+    return '🦋 El Cerro San Pedro tiene 41 especies de mariposas registradas, incluyendo la espectacular Morpho. Las mariposas son bioindicadoras clave: su diversidad refleja directamente la salud del ecosistema.'
+
+  // --- MURCIÉLAGOS ---
+  if (p.includes('murciélago') || p.includes('murcielago') || p.includes('bat'))
+    return '🦇 Hay 10 especies de murciélagos en el cerro. Son polinizadores nocturnos esenciales — polinizan el Cactus San Pedro cuando sus flores abren de noche. Sin murciélagos, muchos cactus desaparecerían.'
+
+  // --- PELIGRO / EXTINCIÓN / CONSERVACIÓN ---
+  if (p.includes('peligro') || p.includes('extinci') || p.includes('amenaza') || p.includes('conserv'))
+    return '⚠️ En el Cerro San Pedro, 47 especies están en alguna categoría de amenaza. Las principales causas son: quemas, asentamientos ilegales, el proyecto del túnel y la contaminación. BioScan ayuda a documentar estas amenazas en tiempo real.'
+
+  // --- BIOSCAN ---
+  if (p.includes('bioscan') || p.includes('app') || p.includes('aplicación') || p.includes('plataforma') || p.includes('proyecto'))
+    return '🌿 BioScan Cochabamba es una plataforma creada por estudiantes de la UPDS para monitorear la biodiversidad del Cerro San Pedro. Permite identificar especies con IA, registrar observaciones en mapa y consultar datos de iNaturalist en tiempo real.'
+
+  // --- VOLUNTARIOS ---
+  if (p.includes('voluntario') || p.includes('participar') || p.includes('cómo ayudo') || p.includes('contribuir'))
+    return '🙌 ¡Podés ser un guardián del cerro! Solo tenés que salir al Cerro San Pedro, fotografiar especies que encuentres y subirlas a BioScan. La IA las identifica automáticamente y tu observación queda en el mapa para todos.'
+
+  // --- MOLLE ---
+  if (p.includes('molle') || p.includes('schinus'))
+    return '🌿 El Molle (Schinus molle) es el árbol nativo más icónico de Cochabamba. Sus frutos rojos alimentan a zorzales y picaflores. Tiene propiedades medicinales ancestrales y es fundamental para la conectividad del ecosistema.'
+
+  // --- CACTUS ---
+  if (p.includes('cactus') || p.includes('cacto') || p.includes('echinopsis'))
+    return '🌵 El Cactus San Pedro (Echinopsis lageniformis) es el cactus más característico del cerro. Sus flores blancas abren solo de noche y son polinizadas por murciélagos. Es también una planta de profundo valor cultural para los pueblos andinos.'
+
+  // --- ATUQ / WWF ---
+  if (p.includes('atuq') || p.includes('wwf') || p.includes('proyecto'))
+    return '🦊 El Proyecto ATUQ de WWF Bolivia trabaja específicamente en la conservación del Cerro San Pedro. Monitorea corredores biológicos, trabaja con comunidades locales y combate las quemas ilegales. BioScan complementa su trabajo con tecnología ciudadana.'
+
+  // --- CLIMA / TEMPERATURA ---
+  if (p.includes('clima') || p.includes('temperatura') || p.includes('lluvia') || p.includes('altitud'))
+    return '🌡️ El Cerro San Pedro va de los 2600m hasta más de 4000m de altitud. El clima varía desde templado en las laderas hasta frígido en las cumbres. Esta gradiente altitudinal explica la extraordinaria diversidad de especies que alberga.'
+
+  // --- CÓMO FUNCIONA LA IA ---
+  if (p.includes('cómo funciona') || p.includes('como funciona') || p.includes('ia') || p.includes('inteligencia') || p.includes('identificar') || p.includes('foto'))
+    return '📸 La IA de BioScan analiza tu foto y la compara con millones de imágenes de especies. Usa Plant.id para plantas e iNaturalist para animales. En segundos te da el nombre científico, descripción y estado de conservación de la especie fotografiada.'
+
+  // --- UPDS / EQUIPO ---
+  if (p.includes('upds') || p.includes('universidad') || p.includes('equipo') || p.includes('creador') || p.includes('quién hizo'))
+    return '👨‍💻 BioScan fue creado por Dylan, Tomas y Jhunior — estudiantes de Ingeniería en Sistemas de la UPDS Cochabamba — durante el Tech4Future Hack 2026, organizado por el Hub Boliviano de IA y Microsoft Learn Student Ambassadors.'
+
+  // --- ODS / SOSTENIBILIDAD ---
+  if (p.includes('ods') || p.includes('sostenible') || p.includes('objetivo') || p.includes('onu'))
+    return '🌍 BioScan está alineado con los ODS de la ONU: ODS 15 (Vida de ecosistemas terrestres), ODS 13 (Acción por el clima), ODS 11 (Ciudades sostenibles) y ODS 17 (Alianzas). Tecnología al servicio de la biodiversidad boliviana.'
+
+  // --- RESPUESTA GENERAL ---
+  const respuestasGenerales = [
+    '🌿 El Cerro San Pedro es un tesoro de biodiversidad en el corazón de Cochabamba. Con 700+ especies registradas, es un corredor biológico vital. ¿Querés saber sobre alguna especie en particular?',
+    '🦋 La biodiversidad del Cerro San Pedro es increíble. Desde la Monterita de Cochabamba (un ave que no existe en ningún otro lugar del mundo) hasta 41 especies de mariposas. ¿Qué te gustaría explorar?',
+    '🌳 El Cerro San Pedro enfrenta amenazas reales: quemas, asentamientos y el proyecto del túnel. BioScan nació para documentar y proteger este ecosistema único. ¿Cómo puedo ayudarte?',
+  ]
+  return respuestasGenerales[Math.floor(Math.random() * respuestasGenerales.length)]
 }
