@@ -12,21 +12,22 @@
  *                     mamíferos, plantas, hongos (gratis, sin key)
  *   - iNaturalist Obs: Trae observaciones reales del Cerro San Pedro
  *   - GBIF:           Datos de biodiversidad global (gratis)
- *   - Groq/Llama 3:   Chatbot eco-asistente BioBot (gratis)
+ *   - Google Gemini:  Chatbot eco-asistente BioBot (gratis, @google/genai SDK)
  *
  * Persona A (Dylan): usa las funciones exportadas, no toques la lógica interna.
  * Persona B (Tomas): ajusta los endpoints cuando su NestJS esté listo.
  */
 
 import axios from 'axios'
+import { GoogleGenAI } from '@google/genai'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 const MODE = import.meta.env.VITE_MODE || 'directo'
 const PLANT_ID_KEY = import.meta.env.VITE_PLANT_ID_KEY || ''
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY || ''
 
-// Modelo Gemini a usar (gemini-1.5-flash es el más rápido y gratuito)
-const GEMINI_MODEL = 'gemini-1.5-flash'
+// Modelo Gemini a usar (gemini-2.0-flash es gratuito y muy rápido)
+const GEMINI_MODEL = 'gemini-2.0-flash'
 
 // ===================================================================
 // 1. IDENTIFICAR ESPECIE POR FOTO (Plantas + Animales)
@@ -143,11 +144,14 @@ export async function preguntarEcoAsistente(pregunta, historial = []) {
       return data.respuesta
     }
 
-    // --- MODO DIRECTO: Google Gemini API ---
+    // --- MODO DIRECTO: Google Gemini con el SDK oficial (@google/genai) ---
     if (!GEMINI_KEY || GEMINI_KEY === 'tu_clave_aqui') {
       // Sin clave → respuesta demo educativa
       return getRespuestaDemo(pregunta)
     }
+
+    // Inicializar el cliente de Gemini con la API key
+    const ai = new GoogleGenAI({ apiKey: GEMINI_KEY })
 
     // Prompt del sistema: define la personalidad de BioBot
     const systemPrompt = `Eres BioBot 🌿, el eco-asistente oficial de BioScan Cochabamba.
@@ -168,49 +172,28 @@ Reglas de respuesta:
 - Usa emojis ocasionalmente para hacer la respuesta más visual
 - Si no sabes algo, admítelo con humildad`
 
-    // Convertir historial al formato de Gemini:
-    // Gemini usa "model" en lugar de "assistant", y "parts" en lugar de "content"
+    // Convertir historial al formato de Gemini SDK
+    // El SDK usa role "model" para las respuestas del bot
     const contenidoHistorial = historial.map((m) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }],
     }))
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        // Instruccion del sistema (personalidad de BioBot)
-        system_instruction: {
-          parts: [{ text: systemPrompt }],
-        },
-        // Historial de la conversación + mensaje actual
-        contents: [
-          ...contenidoHistorial,
-          { role: 'user', parts: [{ text: pregunta }] },
-        ],
-        // Configuración de generación
-        generationConfig: {
-          maxOutputTokens: 300,
-          temperature: 0.7, // 0 = más preciso, 1 = más creativo
-        },
-      }),
+    // Llamar a Gemini con el nuevo SDK
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      config: {
+        systemInstruction: systemPrompt,
+        maxOutputTokens: 300,
+        temperature: 0.7,
+      },
+      contents: [
+        ...contenidoHistorial,
+        { role: 'user', parts: [{ text: pregunta }] },
+      ],
     })
 
-    const data = await response.json()
-
-    // Extraer el texto de la respuesta de Gemini
-    if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      return data.candidates[0].content.parts[0].text
-    }
-
-    // Si Gemini bloqueó la respuesta por seguridad
-    if (data.promptFeedback?.blockReason) {
-      return '🌿 No pude responder esa consulta. ¿Podés reformularla?'
-    }
-
-    throw new Error('Respuesta inesperada de Gemini')
+    return response.text
   } catch (error) {
     console.error('Error en chatbot Gemini:', error)
     return 'Disculpa, no pude conectarme con BioBot. 🌿 Intentá de nuevo en unos segundos.'
