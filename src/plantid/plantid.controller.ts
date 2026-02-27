@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UploadedFile,
+  UseInterceptors,
+  BadRequestException,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { PlantidService } from './plantid.service';
 import { IdentifyPlantDto } from './dto/identify-plant.dto';
 
@@ -36,5 +46,28 @@ export class PlantidController {
   @Post('identify')
   async identify(@Body() dto: IdentifyPlantDto) {
     return this.plantidService.identifyPlant(dto.image);
+  }
+
+  /**
+   * POST /plantid/identify-upload
+   * Sube una imagen directamente (JPG, PNG, WEBP) y devuelve la identificación.
+   * Usar: form-data con campo "file" → archivo de imagen
+   */
+  @Post('identify-upload')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // máximo 10 MB
+    }),
+  )
+  async identifyUpload(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('Debes subir una imagen en el campo "file"');
+    }
+    return this.plantidService.identifyPlantFromBuffer(
+      file.buffer,
+      file.originalname,  // usamos el nombre del archivo para detectar la extensión
+      file.mimetype,
+    );
   }
 }
