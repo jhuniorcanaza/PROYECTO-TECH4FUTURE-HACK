@@ -13,6 +13,7 @@
  *   - iNaturalist Obs: Trae observaciones reales del Cerro San Pedro
  *   - GBIF:           Datos de biodiversidad global (gratis)
  *   - Google Gemini:  Chatbot eco-asistente BioBot (REST API, gratis)
+ *   - Groq / Llama 3: Chatbot eco-asistente BioBot (30 req/min, 14400/dia gratis)
  *
  * Persona A (Dylan): usa las funciones exportadas, no toques la lógica interna.
  * Persona B (Tomas): ajusta los endpoints cuando su NestJS esté listo.
@@ -23,10 +24,7 @@ import axios from 'axios'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 const MODE = import.meta.env.VITE_MODE || 'directo'
 const PLANT_ID_KEY = import.meta.env.VITE_PLANT_ID_KEY || ''
-const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY || ''
-
-// Modelo Gemini — gemini-2.0-flash (gratis, disponible en la cuenta)
-const GEMINI_MODEL = 'gemini-2.0-flash'
+const GROQ_KEY = import.meta.env.VITE_GROQ_KEY || ''
 
 // ===================================================================
 // 1. IDENTIFICAR ESPECIE POR FOTO (Plantas + Animales)
@@ -122,14 +120,15 @@ export async function buscarEspeciesCerca(lat = -17.383, lng = -66.152, radio = 
 }
 
 // ===================================================================
-// 3. CHATBOT ECO-ASISTENTE (Gemini / NestJS)
+// 3. CHATBOT ECO-ASISTENTE (Groq + Llama 3 / NestJS)
 // ===================================================================
 /**
- * Manda una pregunta a BioBot usando Google Gemini.
+ * Manda una pregunta a BioBot usando Groq (Llama 3).
+ * Groq es GRATIS: 30 requests/minuto, 14,400/día.
  * El historial permite conversaciones con memoria de lo anterior.
  *
  * @param {string} pregunta - Pregunta del usuario
- * @param {Array}  historial - Array de { role: 'user'|'model', content: string }
+ * @param {Array}  historial - Array de { role: 'user'|'assistant', content: string }
  * @returns {string} Respuesta de BioBot
  */
 export async function preguntarEcoAsistente(pregunta, historial = []) {
@@ -143,12 +142,23 @@ export async function preguntarEcoAsistente(pregunta, historial = []) {
       return data.respuesta
     }
 
-    // --- MODO DIRECTO: Google Gemini REST API (funciona desde el navegador) ---
-    if (!GEMINI_KEY || GEMINI_KEY === 'tu_clave_aqui') {
+    // --- MODO DIRECTO: Groq API (Llama 3, gratis, 30 req/min) ---
+    if (!GROQ_KEY || GROQ_KEY === 'tu_clave_aqui') {
       return getRespuestaDemo(pregunta)
     }
 
-    const systemPrompt = `Eres BioBot 🌿, el eco-asistente oficial de BioScan Cochabamba.
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: `Eres BioBot 🌿, el eco-asistente oficial de BioScan Cochabamba.
 Eres un experto amigable en la biodiversidad del Cerro San Pedro y los ecosistemas de Cochabamba, Bolivia.
 
 Conoces estos datos reales:
@@ -163,49 +173,36 @@ Conoces estos datos reales:
 Reglas de respuesta:
 - Responde SIEMPRE en español
 - Sé amigable, educativo y conciso (máximo 3 frases)
-- Usa emojis ocasionalmente para hacer la respuesta más visual
-- Si no sabes algo, admítelo con humildad`
-
-    // Convertir historial: Gemini usa role "model" en lugar de "assistant"
-    const contenidoHistorial = historial.map((m) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }))
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [
-          ...contenidoHistorial,
-          { role: 'user', parts: [{ text: pregunta }] },
+- Usa emojis ocasionalmente
+- Si no sabes algo, admítelo con humildad`,
+          },
+          ...historial.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          { role: 'user', content: pregunta },
         ],
-        generationConfig: {
-          maxOutputTokens: 300,
-          temperature: 0.7,
-        },
+        max_tokens: 300,
+        temperature: 0.7,
       }),
     })
 
     const data = await response.json()
 
-    // Si hay cualquier error de API (429, 503, etc.) → caer silenciosamente al demo
+    // Si Groq falla por cualquier razón → fallback al demo
     if (!response.ok) {
-      console.warn('Gemini no disponible, usando respuesta demo:', response.status)
+      console.warn('Groq no disponible, usando demo:', response.status, data)
       return getRespuestaDemo(pregunta)
     }
 
-    if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      return data.candidates[0].content.parts[0].text
+    if (data.choices?.[0]?.message?.content) {
+      return data.choices[0].message.content
     }
 
     return getRespuestaDemo(pregunta)
   } catch (error) {
-    console.error('Error en chatbot Gemini:', error)
-    return 'Disculpa, no pude conectarme con BioBot. 🌿 Intentá de nuevo en unos segundos.'
+    console.error('Error en chatbot Groq:', error)
+    return getRespuestaDemo(pregunta)
   }
 }
 
