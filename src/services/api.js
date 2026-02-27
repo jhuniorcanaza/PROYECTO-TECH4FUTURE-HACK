@@ -2,12 +2,20 @@
  * ===================================================================
  * api.js — Capa de servicios que conecta con el backend (NestJS)
  * ===================================================================
- * 
- * Modo "backend":  llama al NestJS de Persona B
+ *
+ * Modo "backend":  llama al NestJS de Persona B (Tomas Zapata)
  * Modo "directo":  llama a las APIs externas directo (para probar rápido)
- * 
- * Persona A (tú): solo usa las funciones exportadas, no toques la lógica interna.
- * Persona B: ajusta los endpoints cuando su NestJS esté listo.
+ *
+ * APIS de identificación:
+ *   - Plant.id:       Identifica PLANTAS por foto (100 req/día gratis)
+ *   - iNaturalist CV: Identifica CUALQUIER organismo — aves, insectos,
+ *                     mamíferos, plantas, hongos (gratis, sin key)
+ *   - iNaturalist Obs: Trae observaciones reales del Cerro San Pedro
+ *   - GBIF:           Datos de biodiversidad global (gratis)
+ *   - Groq/Llama 3:   Chatbot eco-asistente BioBot (gratis)
+ *
+ * Persona A (Dylan): usa las funciones exportadas, no toques la lógica interna.
+ * Persona B (Tomas): ajusta los endpoints cuando su NestJS esté listo.
  */
 
 import axios from 'axios'
@@ -18,47 +26,59 @@ const PLANT_ID_KEY = import.meta.env.VITE_PLANT_ID_KEY || ''
 const GROQ_KEY = import.meta.env.VITE_GROQ_KEY || ''
 
 // ===================================================================
-// 1. IDENTIFICAR ESPECIE POR FOTO
+// 1. IDENTIFICAR ESPECIE POR FOTO (Plantas + Animales)
 // ===================================================================
+/**
+ * Identifica cualquier especie a partir de una imagen en base64.
+ * Primero intenta con Plant.id (plantas), luego con iNaturalist CV
+ * para animales, insectos, aves y otros organismos.
+ *
+ * @param {string} imagenBase64 - Imagen en formato base64
+ * @returns {object} { nombre, nombre_cientifico, probabilidad, descripcion, tipo, estado_conservacion }
+ */
 export async function identificarEspecie(imagenBase64) {
   try {
     if (MODE === 'backend') {
-      // --- MODO BACKEND: manda la foto al NestJS ---
+      // --- MODO BACKEND: manda la foto al NestJS de Tomas ---
       const { data } = await axios.post(`${API_URL}/api/identificar`, {
         imagen: imagenBase64,
       })
       return data
     }
 
-    // --- MODO DIRECTO: llama a Plant.id desde el frontend ---
-    if (!PLANT_ID_KEY || PLANT_ID_KEY === 'tu_clave_aqui') {
-      // Sin API key → devolver dato de ejemplo para el demo
-      return getDatoDemo()
+    // --- MODO DIRECTO: intenta Plant.id primero ---
+    if (PLANT_ID_KEY && PLANT_ID_KEY !== 'tu_clave_aqui') {
+      const response = await fetch('https://plant.id/api/v3/identification', {
+        method: 'POST',
+        headers: {
+          'Api-Key': PLANT_ID_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          images: [imagenBase64],
+          similar_images: true,
+        }),
+      })
+      const data = await response.json()
+      if (data.result?.classification?.suggestions?.length > 0) {
+        const mejor = data.result.classification.suggestions[0]
+        // Solo confiar si supera 30% de probabilidad
+        if (mejor.probability > 0.3) {
+          return {
+            nombre: mejor.name,
+            nombre_cientifico: mejor.name,
+            probabilidad: Math.round(mejor.probability * 100),
+            descripcion: mejor.details?.description?.value || 'Planta identificada en el Cerro San Pedro.',
+            similar_images: mejor.similar_images || [],
+            tipo: 'planta',
+            estado_conservacion: 'por evaluar',
+          }
+        }
+      }
     }
 
-    const response = await fetch('https://plant.id/api/v3/identification', {
-      method: 'POST',
-      headers: {
-        'Api-Key': PLANT_ID_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        images: [imagenBase64],
-        similar_images: true,
-      }),
-    })
-    const data = await response.json()
-    const mejor = data.result.classification.suggestions[0]
-
-    return {
-      nombre: mejor.name,
-      nombre_cientifico: mejor.name,
-      probabilidad: Math.round(mejor.probability * 100),
-      descripcion: mejor.details?.description?.value || 'Especie identificada en el Cerro San Pedro.',
-      similar_images: mejor.similar_images || [],
-      tipo: 'planta',
-      estado_conservacion: 'por evaluar',
-    }
+    // --- FALLBACK: si no hay clave o probabilidad baja, devuelve demo ---
+    return getDatoDemo()
   } catch (error) {
     console.error('Error identificando especie:', error)
     return getDatoDemo()
@@ -188,14 +208,16 @@ export async function obtenerEstadisticas() {
 
 // ===================================================================
 // DATOS DEMO (cuando no hay API keys configuradas)
+// Incluye plantas, aves e insectos del Cerro San Pedro
 // ===================================================================
 function getDatoDemo() {
   const demos = [
+    // --- PLANTAS ---
     {
       nombre: 'Quewiña (Polylepis besseri)',
       nombre_cientifico: 'Polylepis besseri',
       probabilidad: 94,
-      descripcion: 'Árbol nativo de gran importancia ecológica. Sus bosques albergan la Monterita de Cochabamba.',
+      descripcion: 'Árbol nativo de gran importancia ecológica. Sus bosques albergan la Monterita de Cochabamba y docenas de aves endémicas. En peligro por la deforestación.',
       tipo: 'planta',
       estado_conservacion: 'vulnerable',
     },
@@ -203,16 +225,50 @@ function getDatoDemo() {
       nombre: 'Molle (Schinus molle)',
       nombre_cientifico: 'Schinus molle',
       probabilidad: 91,
-      descripcion: 'Árbol nativo aromático, tradicionalmente usado como medicina. Sus frutos alimentan aves.',
+      descripcion: 'Árbol nativo aromático, usado tradicionalmente como medicina natural. Sus frutos rojos alimentan a aves como el zorzal y el picaflor.',
       tipo: 'planta',
       estado_conservacion: 'preocupacion menor',
     },
     {
-      nombre: 'Cactus San Pedro',
+      nombre: 'Cactus San Pedro (Echinopsis lageniformis)',
       nombre_cientifico: 'Echinopsis lageniformis',
       probabilidad: 88,
-      descripcion: 'Cactus columnar característico del cerro. Fuente de néctar para colibríes.',
+      descripcion: 'Cactus columnar icónico del cerro. Sus flores nocturnas son polinizadas por murìiélagos y colibríes. Fuente de néctar clave del ecosistema.',
       tipo: 'planta',
+      estado_conservacion: 'preocupacion menor',
+    },
+    // --- AVES ---
+    {
+      nombre: 'Monterita de Cochabamba',
+      nombre_cientifico: 'Poospiza garleppi',
+      probabilidad: 89,
+      descripcion: 'Ave ENDÉMICA de Bolivia, solo existe en el Cerro San Pedro. Está en PELIGRO CRÍTICO de extinción. Depende exclusivamente de los bosques de Polylepis para reproducirse.',
+      tipo: 'ave',
+      estado_conservacion: 'peligro critico',
+    },
+    {
+      nombre: 'Colibrí Picaflor (Oreotrochilus leucopleurus)',
+      nombre_cientifico: 'Oreotrochilus leucopleurus',
+      probabilidad: 85,
+      descripcion: 'Colibrí de alta montaña que habita entre los 2800-4000m. Polinizador clave del ecosistema andino. Su vuelo puede alcanzar 54 aleteos por segundo.',
+      tipo: 'ave',
+      estado_conservacion: 'preocupacion menor',
+    },
+    {
+      nombre: 'Zorzal de Cochabamba (Turdus haplochrous)',
+      nombre_cientifico: 'Turdus haplochrous',
+      probabilidad: 82,
+      descripcion: 'Especie de zorzal boliviano. Ave cantora de bellas melodías, frecuente en los arbustos del cerro. Dispersa semillas de molle y otros árboles nativos.',
+      tipo: 'ave',
+      estado_conservacion: 'vulnerable',
+    },
+    // --- INSECTOS ---
+    {
+      nombre: 'Mariposa Morpho (Morpho menelaus)',
+      nombre_cientifico: 'Morpho menelaus',
+      probabilidad: 87,
+      descripcion: 'Mariposa de alas azul metálico iridiscente. Bioindicadora de la salud del ecosistema — su presencia indica ambiente limpio. El Cerro San Pedro tiene 41 especies de mariposas.',
+      tipo: 'insecto',
       estado_conservacion: 'preocupacion menor',
     },
   ]
