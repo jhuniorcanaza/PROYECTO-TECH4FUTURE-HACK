@@ -23,7 +23,10 @@ import axios from 'axios'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 const MODE = import.meta.env.VITE_MODE || 'directo'
 const PLANT_ID_KEY = import.meta.env.VITE_PLANT_ID_KEY || ''
-const GROQ_KEY = import.meta.env.VITE_GROQ_KEY || ''
+const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY || ''
+
+// Modelo Gemini a usar (gemini-1.5-flash es el más rápido y gratuito)
+const GEMINI_MODEL = 'gemini-1.5-flash'
 
 // ===================================================================
 // 1. IDENTIFICAR ESPECIE POR FOTO (Plantas + Animales)
@@ -119,11 +122,20 @@ export async function buscarEspeciesCerca(lat = -17.383, lng = -66.152, radio = 
 }
 
 // ===================================================================
-// 3. CHATBOT ECO-ASISTENTE (Groq / NestJS)
+// 3. CHATBOT ECO-ASISTENTE (Gemini / NestJS)
 // ===================================================================
+/**
+ * Manda una pregunta a BioBot usando Google Gemini.
+ * El historial permite conversaciones con memoria de lo anterior.
+ *
+ * @param {string} pregunta - Pregunta del usuario
+ * @param {Array}  historial - Array de { role: 'user'|'model', content: string }
+ * @returns {string} Respuesta de BioBot
+ */
 export async function preguntarEcoAsistente(pregunta, historial = []) {
   try {
     if (MODE === 'backend') {
+      // --- MODO BACKEND: delega al NestJS de Tomas ---
       const { data } = await axios.post(`${API_URL}/api/chat`, {
         pregunta,
         historial,
@@ -131,47 +143,77 @@ export async function preguntarEcoAsistente(pregunta, historial = []) {
       return data.respuesta
     }
 
-    // --- MODO DIRECTO: Groq API (gratis) ---
-    if (!GROQ_KEY || GROQ_KEY === 'tu_clave_aqui') {
+    // --- MODO DIRECTO: Google Gemini API ---
+    if (!GEMINI_KEY || GEMINI_KEY === 'tu_clave_aqui') {
+      // Sin clave → respuesta demo educativa
       return getRespuestaDemo(pregunta)
     }
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    // Prompt del sistema: define la personalidad de BioBot
+    const systemPrompt = `Eres BioBot 🌿, el eco-asistente oficial de BioScan Cochabamba.
+Eres un experto amigable en la biodiversidad del Cerro San Pedro y los ecosistemas de Cochabamba, Bolivia.
+
+Conoces estos datos reales:
+- El Cerro San Pedro alberga 700+ especies: 104 aves, 527 plantas, 41 mariposas, 10 murciélagos
+- La Monterita de Cochabamba (Poospiza garleppi) es endémica y está en PELIGRO CRÍTICO de extinción
+- Los bosques de Polylepis (quewiña) son los más amenazados del ecosistema
+- Existe un proyecto de túnel que fragmentaría los corredores biológicos del cerro
+- El Proyecto ATUQ de WWF trabaja activamente en la conservación del cerro
+- El molle (Schinus molle) y el cactus San Pedro son especies clave del ecosistema
+- BioScan fue creado por estudiantes de la UPDS Cochabamba en el Tech4Future Hack 2026
+
+Reglas de respuesta:
+- Responde SIEMPRE en español
+- Sé amigable, educativo y conciso (máximo 3 frases)
+- Usa emojis ocasionalmente para hacer la respuesta más visual
+- Si no sabes algo, admítelo con humildad`
+
+    // Convertir historial al formato de Gemini:
+    // Gemini usa "model" en lugar de "assistant", y "parts" en lugar de "content"
+    const contenidoHistorial = historial.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }))
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`
+
+    const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${GROQ_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          {
-            role: 'system',
-            content: `Eres BioBot, el eco-asistente de BioScan Cochabamba.
-Eres experto en la biodiversidad del Cerro San Pedro y los corredores biológicos urbanos de Cochabamba, Bolivia.
-Datos que conoces:
-- El Cerro San Pedro tiene 700+ especies registradas
-- 104 aves, 527 plantas, 41 mariposas, 10 murciélagos
-- La Monterita de Cochabamba (Poospiza garleppi) está en peligro de extinción
-- Los bosques de Polylepis (quewiña) están amenazados
-- Hay un proyecto de túnel que amenaza los corredores biológicos
-- El Proyecto ATUQ de WWF trabaja en conservación del cerro
-Responde en español, de forma amigable y educativa. Máximo 3 frases cortas. Usa emojis ocasionalmente.`,
-          },
-          ...historial.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-          { role: 'user', content: pregunta },
+        // Instruccion del sistema (personalidad de BioBot)
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        // Historial de la conversación + mensaje actual
+        contents: [
+          ...contenidoHistorial,
+          { role: 'user', parts: [{ text: pregunta }] },
         ],
-        max_tokens: 300,
+        // Configuración de generación
+        generationConfig: {
+          maxOutputTokens: 300,
+          temperature: 0.7, // 0 = más preciso, 1 = más creativo
+        },
       }),
     })
+
     const data = await response.json()
-    return data.choices[0].message.content
+
+    // Extraer el texto de la respuesta de Gemini
+    if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      return data.candidates[0].content.parts[0].text
+    }
+
+    // Si Gemini bloqueó la respuesta por seguridad
+    if (data.promptFeedback?.blockReason) {
+      return '🌿 No pude responder esa consulta. ¿Podés reformularla?'
+    }
+
+    throw new Error('Respuesta inesperada de Gemini')
   } catch (error) {
-    console.error('Error en chatbot:', error)
-    return 'Disculpa, no pude conectarme. 🌿 Intentá de nuevo en unos segundos.'
+    console.error('Error en chatbot Gemini:', error)
+    return 'Disculpa, no pude conectarme con BioBot. 🌿 Intentá de nuevo en unos segundos.'
   }
 }
 
