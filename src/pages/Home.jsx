@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { Link } from 'react-router-dom'
 import Hero from '../components/Hero'
 import PhotoUpload from '../components/PhotoUpload'
 import Dashboard from '../components/Dashboard'
@@ -52,12 +53,12 @@ export default function Home() {
           </div>
 
           <div className="text-center mt-10">
-            <a
-              href="/catalogo"
+            <Link
+              to="/catalogo"
               className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-3 rounded-2xl shadow-lg shadow-green-500/25 transition-all hover:scale-105"
             >
               Ver todo el catálogo →
-            </a>
+            </Link>
           </div>
         </div>
       </section>

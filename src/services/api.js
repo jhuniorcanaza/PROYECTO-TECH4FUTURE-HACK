@@ -275,7 +275,7 @@ function getDatoDemo() {
       nombre: 'Cactus San Pedro (Echinopsis lageniformis)',
       nombre_cientifico: 'Echinopsis lageniformis',
       probabilidad: 88,
-      descripcion: 'Cactus columnar icónico del cerro. Sus flores nocturnas son polinizadas por murìiélagos y colibríes. Fuente de néctar clave del ecosistema.',
+      descripcion: 'Cactus columnar icónico del cerro. Sus flores nocturnas son polinizadas por murciélagos y colibríes. Fuente de néctar clave del ecosistema.',
       tipo: 'planta',
       estado_conservacion: 'preocupacion menor',
     },

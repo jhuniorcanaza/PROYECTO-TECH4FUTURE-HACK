@@ -1,4 +1,4 @@
-import { Leaf, Heart, Github } from 'lucide-react'
+import { Leaf, Heart } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export default function Footer() {

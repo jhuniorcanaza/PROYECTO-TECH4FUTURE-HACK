@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, Upload, Loader2, CheckCircle2, Leaf, BarChart3 } from 'lucide-react'
 import { identificarEspecie } from '../services/api'
 
 export default function PhotoUpload() {
+  const navigate = useNavigate()
   const [preview, setPreview] = useState(null)
   const [loading, setLoading] = useState(false)
   const [resultado, setResultado] = useState(null)
@@ -182,7 +184,10 @@ export default function PhotoUpload() {
                   >
                     Otra foto
                   </button>
-                  <button className="flex-1 py-3 bg-primary/10 text-primary font-medium rounded-xl hover:bg-primary/20 transition-all text-sm">
+                  <button
+                    onClick={() => navigate('/mapa')}
+                    className="flex-1 py-3 bg-primary/10 text-primary font-medium rounded-xl hover:bg-primary/20 transition-all text-sm"
+                  >
                     Ver en mapa
                   </button>
                 </div>
