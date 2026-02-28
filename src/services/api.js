@@ -40,11 +40,55 @@ const GROQ_KEY = import.meta.env.VITE_GROQ_KEY || ''
 export async function identificarEspecie(imagenBase64) {
   try {
     if (MODE === 'backend') {
-      // --- MODO BACKEND: manda la foto al NestJS de Tomas ---
-      const { data } = await axios.post(`${API_URL}/api/identificar`, {
-        imagen: imagenBase64,
-      })
-      return data
+      // --- MODO BACKEND: usa endpoints reales de Tomas ---
+
+      // 1) Intentar Plant.id via backend
+      try {
+        const { data } = await axios.post(`${API_URL}/api/plantid/identify`, {
+          image: imagenBase64,
+        })
+        if (data.esPlanta && data.planta) {
+          return {
+            nombre: data.planta.nombreComun || data.planta.nombreCientifico,
+            nombre_cientifico: data.planta.nombreCientifico,
+            probabilidad: parseInt(data.planta.probabilidadIdentificacion) || 85,
+            descripcion: data.planta.descripcion || 'Planta identificada en el Cerro San Pedro.',
+            similar_images: (data.planta.imagenesSimilares || []).map(img => ({ url: img.url })),
+            tipo: 'planta',
+            estado_conservacion: 'por evaluar',
+            taxonomia: data.planta.taxonomia || {},
+            wikipedia: data.planta.wikipedia || null,
+          }
+        }
+      } catch (err) {
+        console.warn('Plant.id backend falló, intentando iNaturalist...', err.message)
+      }
+
+      // 2) Intentar iNaturalist CV via backend (cualquier ser vivo)
+      try {
+        const blob = base64ToBlob(imagenBase64)
+        const formData = new FormData()
+        formData.append('file', blob, 'foto.jpg')
+        const { data } = await axios.post(`${API_URL}/api/inaturalist/identify`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        if (data.mejorCoincidencia) {
+          const mejor = data.mejorCoincidencia
+          return {
+            nombre: mejor.identificacion.nombresEspanol || mejor.identificacion.nombreComun || mejor.identificacion.nombreCientifico,
+            nombre_cientifico: mejor.identificacion.nombreCientifico,
+            probabilidad: mejor.confianzaNumero || 85,
+            descripcion: mejor.descripcion || 'Especie identificada en el Cerro San Pedro.',
+            tipo: (mejor.identificacion.tipoOrganismo || 'otro').toLowerCase(),
+            estado_conservacion: mejor.estadoConservacion?.estado || 'por evaluar',
+            taxonomia: mejor.taxonomiaCompleta || {},
+          }
+        }
+      } catch (err) {
+        console.warn('iNaturalist backend falló:', err.message)
+      }
+
+      return getDatoDemo()
     }
 
     // --- MODO DIRECTO: intenta Plant.id primero ---
@@ -92,10 +136,20 @@ export async function identificarEspecie(imagenBase64) {
 export async function buscarEspeciesCerca(lat = -17.383, lng = -66.152, radio = 15) {
   try {
     if (MODE === 'backend') {
-      const { data } = await axios.get(`${API_URL}/api/especies/cerca`, {
-        params: { lat, lng, radio },
+      // --- MODO BACKEND: iNaturalist observations via Tomas ---
+      const { data } = await axios.get(`${API_URL}/api/inaturalist/observations`, {
+        params: { place_name: 'Cochabamba', per_page: 30, page: 1 },
       })
-      return data
+      return (data.observaciones || []).map((obs) => ({
+        id: obs.id,
+        nombre: obs.especie?.nombreComun || 'Desconocida',
+        nombre_cientifico: obs.especie?.nombreCientifico || '',
+        foto: obs.fotos?.[0]?.url || obs.especie?.imagen || '',
+        lat: parseFloat(obs.coordenadas?.latitud) || lat,
+        lng: parseFloat(obs.coordenadas?.longitud) || lng,
+        fecha: obs.fecha || 'Sin fecha',
+        tipo: obs.especie?.rango?.toLowerCase() || 'otro',
+      }))
     }
 
     // --- MODO DIRECTO: iNaturalist API (gratis, sin key) ---
@@ -133,16 +187,8 @@ export async function buscarEspeciesCerca(lat = -17.383, lng = -66.152, radio = 
  */
 export async function preguntarEcoAsistente(pregunta, historial = []) {
   try {
-    if (MODE === 'backend') {
-      // --- MODO BACKEND: delega al NestJS de Tomas ---
-      const { data } = await axios.post(`${API_URL}/api/chat`, {
-        pregunta,
-        historial,
-      })
-      return data.respuesta
-    }
-
-    // --- MODO DIRECTO: Groq API (Llama 3, gratis, 30 req/min) ---
+    // Chatbot SIEMPRE usa Groq directo (no existe endpoint chat en backend)
+    // --- Groq API (Llama 3, gratis, 30 req/min) ---
     if (!GROQ_KEY || GROQ_KEY === 'tu_clave_aqui') {
       return getRespuestaDemo(pregunta)
     }
@@ -211,12 +257,8 @@ Reglas de respuesta:
 // ===================================================================
 export async function obtenerEstadisticas() {
   try {
-    if (MODE === 'backend') {
-      const { data } = await axios.get(`${API_URL}/api/estadisticas`)
-      return data
-    }
-
-    // Estadísticas basadas en datos reales del Cerro San Pedro
+    // Estadísticas SIEMPRE locales (no existe endpoint en backend)
+    // Datos reales del Cerro San Pedro
     return {
       totalEspecies: 724,
       enPeligro: 47,
@@ -235,6 +277,19 @@ export async function obtenerEstadisticas() {
       voluntariosActivos: 156,
     }
   }
+}
+
+// ===================================================================
+// UTILIDAD: Convertir base64 a Blob (para enviar como archivo al backend)
+// ===================================================================
+function base64ToBlob(base64String) {
+  const parts = base64String.split(',')
+  const mime = parts[0]?.match(/:(.*?);/)?.[1] || 'image/jpeg'
+  const byteString = atob(parts.length > 1 ? parts[1] : parts[0])
+  const ab = new ArrayBuffer(byteString.length)
+  const ia = new Uint8Array(ab)
+  for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i)
+  return new Blob([ab], { type: mime })
 }
 
 // ===================================================================
