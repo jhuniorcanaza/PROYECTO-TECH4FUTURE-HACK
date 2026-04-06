@@ -271,3 +271,30 @@ Commit:
 - Se cumplieron las 3 mejoras mínimas requeridas.
 - Se aplicaron cambios en componentes y servicio, con impacto directo en calidad de código.
 - El proyecto compila correctamente tras los cambios (build exitoso).
+
+---
+
+## ✅ Actividad 4: Implementación de una mejora funcional pequeña
+
+Se implementó una funcionalidad de gestión de tareas de monitoreo en la interfaz principal.
+
+### Funcionalidades incorporadas
+
+- Registrar una nueva tarea.
+- Listar tareas pendientes.
+- Marcar tareas como completadas.
+- Validar que no se registren tareas vacías.
+
+### Implementación técnica
+
+- Se creó el componente src/components/TaskManager.jsx.
+- Se integró en la página principal desde src/pages/Home.jsx.
+- La lógica usa estado local con React para administrar tareas y su estado (pendiente/completada).
+
+### Beneficio
+
+La aplicación ahora incluye una interacción funcional adicional que complementa el flujo de monitoreo, mejora la utilidad práctica del sistema y cumple el requerimiento de mejora funcional del examen.
+
+### Commit asociado
+
+- 0ddb9a8 — feat(tasks): agregar gestion de tareas con validacion y estado
