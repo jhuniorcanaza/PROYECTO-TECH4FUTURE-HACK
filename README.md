@@ -298,3 +298,43 @@ La aplicación ahora incluye una interacción funcional adicional que complement
 ### Commit asociado
 
 - 0ddb9a8 — feat(tasks): agregar gestion de tareas con validacion y estado
+
+---
+
+## 🧪 Actividad 5: Evidencia de ejecución correcta de pruebas
+
+Se validó la ejecución correcta del proyecto mediante pruebas técnicas de compilación y arranque local.
+
+### 1) Compilación de producción
+
+Comando ejecutado:
+
+- npm.cmd run build
+
+Resultado:
+
+- Build completado correctamente con Vite.
+- Se generaron archivos en dist/ sin errores de compilación.
+
+### 2) Ejecución en entorno local
+
+Comando ejecutado:
+
+- npm.cmd run dev -- --host
+
+Resultado:
+
+- Servidor iniciado correctamente.
+- Aplicación disponible en http://localhost:5174/ (puerto alternativo por 5173 ocupado).
+
+### 3) Evidencia de trabajo individual y guardado constante
+
+El trabajo se realizó en la rama individual:
+
+- examen-jhunior-canaza
+
+Se realizaron commits con nombres claros y técnicos durante el desarrollo de las actividades.
+
+### Observación técnica
+
+Durante la validación también se ejecutó lint para revisión estática; existen reglas de estilo pendientes en archivos heredados del proyecto base. Esto no bloquea la compilación ni la ejecución funcional verificada en esta actividad.
