@@ -26,6 +26,15 @@ const MODE = import.meta.env.VITE_MODE || 'directo'
 const PLANT_ID_KEY = import.meta.env.VITE_PLANT_ID_KEY || ''
 const GROQ_KEY = import.meta.env.VITE_GROQ_KEY || ''
 
+const STATS_BASE = {
+  totalEspecies: 724,
+  enPeligro: 47,
+  voluntariosActivos: 156,
+  avesRegistradas: 104,
+  plantasRegistradas: 527,
+  mariposasRegistradas: 41,
+}
+
 // ===================================================================
 // 1. IDENTIFICAR ESPECIE POR FOTO (Plantas + Animales)
 // ===================================================================
@@ -218,21 +227,14 @@ export async function obtenerEstadisticas() {
 
     // Estadísticas basadas en datos reales del Cerro San Pedro
     return {
-      totalEspecies: 724,
-      enPeligro: 47,
+      ...STATS_BASE,
       observacionesHoy: Math.floor(Math.random() * 20) + 12,
-      voluntariosActivos: 156,
-      avesRegistradas: 104,
-      plantasRegistradas: 527,
-      mariposasRegistradas: 41,
     }
   } catch (error) {
     console.error('Error obteniendo estadísticas:', error)
     return {
-      totalEspecies: 724,
-      enPeligro: 47,
+      ...STATS_BASE,
       observacionesHoy: 15,
-      voluntariosActivos: 156,
     }
   }
 }
