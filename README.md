@@ -153,3 +153,52 @@ npm run preview
 ## 📜 Licencia
 
 MIT — libre para uso educativo y de investigación.
+
+---
+
+## 🧩 Actividad 2: Identificación de estructura y arquitectura del sistema
+
+### 1) Tipo de arquitectura del proyecto base
+
+El proyecto sigue una arquitectura de frontend SPA (Single Page Application) basada en componentes, construida con React + Vite.
+
+Se observa una separación por capas ligera:
+
+- Capa de presentación: componentes y páginas React.
+- Capa de navegación: enrutamiento de vistas con React Router.
+- Capa de servicios: módulo centralizado para consumo de APIs externas o backend.
+- Capa de datos estáticos: archivos JSON para contenido local.
+
+Este enfoque corresponde a una arquitectura modular por responsabilidades, adecuada para un proyecto de hackathon y evolución incremental.
+
+### 2) Módulos o componentes identificados
+
+Módulos principales detectados:
+
+- components/: UI reutilizable (Navbar, Hero, Dashboard, MapView, PhotoUpload, Chatbot, Footer, SpeciesCard).
+- pages/: vistas de alto nivel por ruta (Home, Catalog, MapPage, About).
+- services/: integración con APIs y lógica de comunicación externa (api.js).
+- data/: catálogo local y datasets (especies.json).
+- App.jsx y main.jsx: composición raíz, inicialización y montaje de la aplicación.
+
+Responsabilidad funcional principal:
+
+- Identificación de especies por imagen.
+- Visualización de observaciones en mapa.
+- Dashboard de métricas de biodiversidad.
+- Chatbot ecológico asistido por IA.
+
+### 3) Mejoras arquitectónicas propuestas para mayor mantenibilidad
+
+Mejoras recomendadas:
+
+- Separar la capa de servicios por dominio: crear archivos independientes para identificación, mapa, chatbot y estadísticas, evitando un único archivo grande.
+- Incorporar tipado estático (TypeScript o validación con esquemas) para contratos de datos de APIs y reducción de errores en tiempo de ejecución.
+- Estandarizar manejo de errores y estados de carga con utilidades compartidas o hooks reutilizables.
+- Extraer constantes de configuración (endpoints, límites, textos) a módulos dedicados para facilitar cambios y pruebas.
+- Agregar pruebas unitarias básicas en servicios y componentes críticos para asegurar estabilidad en refactorizaciones.
+- Definir una estructura de carpetas orientada a features (por ejemplo: features/chatbot, features/mapa, features/upload) para escalar el proyecto con menos acoplamiento.
+
+Conclusión técnica:
+
+La base actual es funcional y bien orientada para prototipado rápido. Con la modularización por dominio, tipado y pruebas, el sistema puede evolucionar a un nivel de mantenibilidad y escalabilidad más alto sin afectar la experiencia de usuario.
