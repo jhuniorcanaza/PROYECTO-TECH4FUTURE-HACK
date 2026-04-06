@@ -32,12 +32,46 @@ const colorMap = {
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    obtenerEstadisticas().then(setStats)
+    let isMounted = true
+
+    const cargarEstadisticas = async () => {
+      try {
+        const data = await obtenerEstadisticas()
+        if (isMounted) setStats(data)
+      } catch {
+        if (isMounted) setError('No se pudo cargar el dashboard.')
+      }
+    }
+
+    cargarEstadisticas()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
-  if (!stats) return null
+  if (error) {
+    return (
+      <section id="dashboard" className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-red-600 font-medium">{error}</p>
+        </div>
+      </section>
+    )
+  }
+
+  if (!stats) {
+    return (
+      <section id="dashboard" className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-gray-500">Cargando estadísticas...</p>
+        </div>
+      </section>
+    )
+  }
 
   const cards = ['totalEspecies', 'avesRegistradas', 'enPeligro', 'observacionesHoy', 'voluntariosActivos', 'mariposasRegistradas']
 
