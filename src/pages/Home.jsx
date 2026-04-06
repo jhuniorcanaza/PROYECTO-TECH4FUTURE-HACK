@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import Hero from '../components/Hero'
 import PhotoUpload from '../components/PhotoUpload'
 import Dashboard from '../components/Dashboard'
+import TaskManager from '../components/TaskManager'
 import MapView from '../components/MapView'
 import SpeciesCard from '../components/SpeciesCard'
 import especies from '../data/especies.json'
@@ -25,6 +26,8 @@ export default function Home() {
       </div>
 
       <Dashboard />
+
+      <TaskManager />
 
       {/* Map section */}
       <section className="py-16 bg-gray-50/50">
