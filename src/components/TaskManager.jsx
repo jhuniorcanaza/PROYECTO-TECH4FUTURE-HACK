@@ -1,44 +1,33 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { CheckCircle2, Circle, Plus } from 'lucide-react'
+import {
+  addTask,
+  getPendingTasks,
+  TASK_EMPTY_ERROR,
+  toggleTaskCompletion,
+} from '../utils/taskUtils'
 
 export default function TaskManager() {
   const [taskText, setTaskText] = useState('')
   const [error, setError] = useState('')
   const [tasks, setTasks] = useState([])
 
-  const pendingCount = useMemo(() => tasks.filter((task) => !task.completed).length, [tasks])
+  const pendingCount = useMemo(() => getPendingTasks(tasks).length, [tasks])
 
   const handleAddTask = () => {
-    const cleanText = taskText.trim()
-
-    if (!cleanText) {
-      setError('Ingresa una tarea antes de registrar.')
-      return
-    }
-
-    const newTask = {
-      id: Date.now(),
-      text: cleanText,
-      completed: false,
-    }
-
-    setTasks((prev) => [newTask, ...prev])
+    const result = addTask(tasks, taskText)
+    setTasks(result.tasks)
+    setError(result.error)
+    if (result.error === TASK_EMPTY_ERROR) return
     setTaskText('')
-    setError('')
   }
 
   const toggleTask = (id) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? { ...task, completed: !task.completed }
-          : task,
-      ),
-    )
+    setTasks((prev) => toggleTaskCompletion(prev, id))
   }
 
-  const pendingTasks = tasks.filter((task) => !task.completed)
+  const pendingTasks = getPendingTasks(tasks)
 
   return (
     <section id="tareas" className="py-16 bg-gradient-to-b from-emerald-50/60 to-white">

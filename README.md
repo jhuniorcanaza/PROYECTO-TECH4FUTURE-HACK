@@ -301,40 +301,39 @@ La aplicación ahora incluye una interacción funcional adicional que complement
 
 ---
 
-## 🧪 Actividad 5: Evidencia de ejecución correcta de pruebas
+## 🧪 Actividad 5: Pruebas de software
 
-Se validó la ejecución correcta del proyecto mediante pruebas técnicas de compilación y arranque local.
+Se implementaron pruebas automatizadas para validar la lógica de gestión de tareas.
 
-### 1) Compilación de producción
+### Alcance probado
+
+- Validación de entrada: impedir registro de tareas vacías.
+- Función de registro: creación de tarea con texto normalizado.
+- Regla de negocio: mantener lista sin cambios cuando el registro es inválido.
+- Salida esperada del sistema: marcar tarea como completada y filtrar pendientes.
+
+### Archivos de pruebas
+
+- src/utils/taskUtils.js: lógica de negocio de tareas.
+- src/utils/taskUtils.test.js: suite de pruebas con Vitest.
+
+### Casos de prueba implementados
+
+- valida que no se registren tareas vacias
+- registra una tarea nueva con texto limpio
+- retorna error cuando el registro es vacio
+- marca una tarea como completada y lista pendientes
+
+### Ejecución
 
 Comando ejecutado:
 
-- npm.cmd run build
+```bash
+npm run test
+```
 
-Resultado:
+Resultado obtenido:
 
-- Build completado correctamente con Vite.
-- Se generaron archivos en dist/ sin errores de compilación.
-
-### 2) Ejecución en entorno local
-
-Comando ejecutado:
-
-- npm.cmd run dev -- --host
-
-Resultado:
-
-- Servidor iniciado correctamente.
-- Aplicación disponible en http://localhost:5174/ (puerto alternativo por 5173 ocupado).
-
-### 3) Evidencia de trabajo individual y guardado constante
-
-El trabajo se realizó en la rama individual:
-
-- examen-jhunior-canaza
-
-Se realizaron commits con nombres claros y técnicos durante el desarrollo de las actividades.
-
-### Observación técnica
-
-Durante la validación también se ejecutó lint para revisión estática; existen reglas de estilo pendientes en archivos heredados del proyecto base. Esto no bloquea la compilación ni la ejecución funcional verificada en esta actividad.
+- Test Files: 1 passed
+- Tests: 4 passed
+- Estado: todas las pruebas pasan correctamente
