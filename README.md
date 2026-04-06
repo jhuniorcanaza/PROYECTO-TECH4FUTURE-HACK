@@ -202,3 +202,72 @@ Mejoras recomendadas:
 Conclusión técnica:
 
 La base actual es funcional y bien orientada para prototipado rápido. Con la modularización por dominio, tipado y pruebas, el sistema puede evolucionar a un nivel de mantenibilidad y escalabilidad más alto sin afectar la experiencia de usuario.
+
+---
+
+## ♻️ Actividad 3: Refactorización de código
+
+Se realizaron tres mejoras concretas en la rama de trabajo, enfocadas en mantenibilidad, legibilidad y robustez.
+
+### Mejora 1: Manejo explícito de carga y error en Dashboard
+
+Archivo intervenido: src/components/Dashboard.jsx
+
+Cambios aplicados:
+
+- Se añadió estado de error para fallos al obtener estadísticas.
+- Se incorporó estado de carga visible para evitar render vacío.
+- Se protegió la actualización de estado cuando el componente se desmonta.
+
+Beneficio técnico:
+
+- Mejor experiencia de usuario en escenarios de latencia o error.
+- Menor riesgo de advertencias por actualización de estado en componentes desmontados.
+
+Commit:
+
+- 3554be6 — refactor(dashboard): manejar carga y error de estadisticas
+
+### Mejora 2: Validación de imagen y control de errores en PhotoUpload
+
+Archivo intervenido: src/components/PhotoUpload.jsx
+
+Cambios aplicados:
+
+- Se validó tipo de archivo para aceptar solo imágenes.
+- Se validó tamaño máximo (10 MB).
+- Se verificó la presencia de base64 antes de invocar la API.
+- Se mostraron mensajes de error claros al usuario.
+
+Beneficio técnico:
+
+- Evita solicitudes inválidas al servicio de identificación.
+- Mejora legibilidad del flujo de carga y manejo de fallos.
+
+Commit:
+
+- c329685 — refactor(upload): validar archivo y manejo de errores de imagen
+
+### Mejora 3: Eliminación de código duplicado en estadísticas
+
+Archivo intervenido: src/services/api.js
+
+Cambios aplicados:
+
+- Se creó la constante STATS_BASE para valores compartidos.
+- Se reutilizó STATS_BASE tanto en respuesta normal como en fallback de error.
+
+Beneficio técnico:
+
+- Reduce duplicación y facilita mantenimiento.
+- Centraliza valores base para futuras modificaciones.
+
+Commit:
+
+- 0be4d06 — refactor(api): centralizar constantes base de estadisticas
+
+### Resultado de la refactorización
+
+- Se cumplieron las 3 mejoras mínimas requeridas.
+- Se aplicaron cambios en componentes y servicio, con impacto directo en calidad de código.
+- El proyecto compila correctamente tras los cambios (build exitoso).
