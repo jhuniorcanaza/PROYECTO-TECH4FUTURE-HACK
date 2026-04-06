@@ -8,18 +8,30 @@ export default function PhotoUpload() {
   const [preview, setPreview] = useState(null)
   const [loading, setLoading] = useState(false)
   const [resultado, setResultado] = useState(null)
+  const [error, setError] = useState(null)
+
+  const MAX_FILE_SIZE = 10 * 1024 * 1024
 
   const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0]
     if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError('Solo se permiten archivos de imagen.')
+      return
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setError('La imagen supera los 10MB permitidos.')
+      return
+    }
 
     const reader = new FileReader()
     reader.onload = (e) => {
       setPreview(e.target.result)
       setResultado(null)
+      setError(null)
     }
     reader.readAsDataURL(file)
-  }, [])
+  }, [MAX_FILE_SIZE])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -30,13 +42,20 @@ export default function PhotoUpload() {
 
   const handleIdentificar = async () => {
     if (!preview) return
+    const base64 = preview.includes(',') ? preview.split(',')[1] : ''
+    if (!base64) {
+      setError('No se pudo procesar la imagen. Intenta con otra foto.')
+      return
+    }
+
     setLoading(true)
     try {
-      const base64 = preview.split(',')[1]
       const result = await identificarEspecie(base64)
       setResultado(result)
+      setError(null)
     } catch (err) {
       console.error(err)
+      setError('Ocurrió un error al identificar la especie.')
     } finally {
       setLoading(false)
     }
@@ -45,6 +64,7 @@ export default function PhotoUpload() {
   const handleReset = () => {
     setPreview(null)
     setResultado(null)
+    setError(null)
   }
 
   const getEstadoColor = (estado) => {
@@ -136,6 +156,10 @@ export default function PhotoUpload() {
                   </>
                 )}
               </motion.button>
+            )}
+
+            {error && (
+              <p className="mt-3 text-sm text-red-600 font-medium">{error}</p>
             )}
           </div>
 
